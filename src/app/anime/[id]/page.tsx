@@ -7,9 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { AnimeGrid } from "@/components/anime-grid";
 import { AnimeDetailActions } from "@/components/anime-detail-actions";
 import { CharacterList } from "@/components/character-list";
-import { CommentSection } from "@/components/comment-section";
 import { WatchButton } from "@/components/watch-button";
-import { auth } from "@/lib/auth";
 import {
   Star,
   Captions,
@@ -48,7 +46,6 @@ export default async function AnimeDetailPage({
   const { id } = await params;
   const anilistId = Number(id);
   if (Number.isNaN(anilistId)) notFound();
-  const session = await auth();
 
   const provider = providers.getMetadataProvider();
   const anime = await provider.getById(anilistId);
@@ -387,16 +384,6 @@ export default async function AnimeDetailPage({
           </div>
         </div>
 
-        {/* Comments */}
-        <div className="mt-12">
-          <Suspense
-            fallback={
-              <div className="h-32 animate-pulse rounded-lg bg-muted" />
-            }
-          >
-            <CommentSection anilistId={anilistId} isLoggedIn={!!session?.user} />
-          </Suspense>
-        </div>
       </div>
     </div>
   );
