@@ -185,7 +185,14 @@ export default async function AnimeDetailPage({
 
               {/* Action buttons — centered */}
               <div className="mt-5 flex flex-wrap items-center justify-center gap-3 md:justify-start">
-                <WatchButton animeTitle={title} anilistId={anilistId} />
+                <WatchButton
+                  titles={{
+                    english: anime.title.english ?? undefined,
+                    romaji: anime.title.romaji,
+                    native: anime.title.native ?? undefined,
+                  }}
+                  anilistId={anilistId}
+                />
                 <Suspense fallback={null}>
                   <AnimeDetailActions anilistId={anilistId} />
                 </Suspense>
