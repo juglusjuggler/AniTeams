@@ -1,13 +1,13 @@
 import { z } from "zod";
 
 const envSchema = z.object({
-  DATABASE_URL: z.string().url(),
-  AUTH_SECRET: z.string().min(16),
+  DATABASE_URL: z.string().min(1),
+  AUTH_SECRET: z.string().min(1),
   ANILIST_CLIENT_ID: z.string().optional(),
   ANILIST_CLIENT_SECRET: z.string().optional(),
-  ANILIST_REDIRECT_URI: z.string().url().optional(),
-  NEXT_PUBLIC_APP_URL: z.string().url().default("http://localhost:3000"),
-  REDIS_URL: z.string().url().optional(),
+  ANILIST_REDIRECT_URI: z.string().optional(),
+  NEXT_PUBLIC_APP_URL: z.string().default("http://localhost:3000"),
+  REDIS_URL: z.string().optional(),
   NODE_ENV: z.enum(["development", "production", "test"]).default("development"),
 });
 
