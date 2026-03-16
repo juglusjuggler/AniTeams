@@ -1,12 +1,15 @@
 "use client";
 
 import { useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { signIn } from "next-auth/react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Loader2 } from "lucide-react";
 
 export function LoginForm() {
+  const searchParams = useSearchParams();
+  const callbackUrl = searchParams.get("callbackUrl") || "/";
   const [mode, setMode] = useState<"login" | "register">("login");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -43,7 +46,7 @@ export function LoginForm() {
       if (result?.error) {
         setError(mode === "register" ? "Account created but login failed. Try signing in." : "Invalid email or password");
       } else {
-        window.location.href = "/";
+        window.location.href = callbackUrl;
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Something went wrong. Please try again.");
@@ -69,7 +72,7 @@ export function LoginForm() {
       </CardHeader>
       <CardContent className="space-y-3">
         <Button
-          onClick={() => signIn("google", { callbackUrl: "/" })}
+          onClick={() => signIn("google", { callbackUrl })}
           variant="outline"
           className="w-full gap-2"
         >

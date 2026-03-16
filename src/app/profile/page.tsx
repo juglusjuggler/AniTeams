@@ -2,10 +2,10 @@ import type { Metadata } from "next";
 import { requireAuth } from "@/lib/auth-utils";
 import { getProfile } from "@/server/profile";
 import { getAniListConnection, getAniListAuthUrl } from "@/server/anilist-sync";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { ProfileEditor } from "@/components/profile-editor";
+import { AvatarEditor } from "@/components/avatar-editor";
 import { AniListConnect } from "@/components/anilist-connect";
 import { BookOpen, MessageSquare, Clock } from "lucide-react";
 
@@ -28,15 +28,13 @@ export default async function ProfilePage() {
     );
   }
 
-  const initials = profile.name?.slice(0, 2).toUpperCase() ?? "U";
-
   return (
     <div className="container mx-auto max-w-4xl px-4 py-8">
       <div className="flex flex-col items-center gap-6 md:flex-row md:items-start">
-        <Avatar className="h-24 w-24">
-          <AvatarImage src={profile.image ?? undefined} alt={profile.name ?? "User"} />
-          <AvatarFallback className="text-2xl">{initials}</AvatarFallback>
-        </Avatar>
+        <AvatarEditor
+          currentImage={profile.image ?? null}
+          name={profile.name ?? null}
+        />
 
         <div className="flex-1 text-center md:text-left">
           <div className="flex items-center justify-center gap-2 md:justify-start">

@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { Suspense } from "react";
 import { LoginForm } from "@/components/login-form";
 
 export const metadata: Metadata = {
@@ -9,7 +10,9 @@ export const metadata: Metadata = {
 export default function LoginPage() {
   return (
     <div className="container mx-auto flex min-h-[calc(100vh-4rem)] items-center justify-center px-4">
-      <LoginForm />
+      <Suspense>
+        <LoginForm />
+      </Suspense>
     </div>
   );
 }
