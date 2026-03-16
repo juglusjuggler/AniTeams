@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 interface HiAnimeResult {
   id: string;
   name: string;
+  jname?: string;
   poster: string;
   episodes?: { sub: number; dub: number };
 }
@@ -21,12 +22,26 @@ interface WatchButtonProps {
   anilistId: number;
 }
 
+/** Minimum similarity to keep a result (filters out completely irrelevant) */
+const MIN_SIMILARITY = 0.12;
+
+/** Normalize a title for comparison */
+function normalize(s: string): string {
+  return s
+    .toLowerCase()
+    .replace(/[:\-–—_.!?,()[\]{}'"]/g, " ")
+    .replace(/\b(season|s)\s*(\d+)/g, "$2")
+    .replace(/\b(\d+)(st|nd|rd|th)\b/g, "$1")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
 /** Simple similarity score between two strings (0-1) */
 function similarity(a: string, b: string): number {
-  const al = a.toLowerCase().trim();
-  const bl = b.toLowerCase().trim();
+  const al = normalize(a);
+  const bl = normalize(b);
   if (al === bl) return 1;
-  if (al.includes(bl) || bl.includes(al)) return 0.8;
+  if (al.includes(bl) || bl.includes(al)) return 0.85;
 
   // Jaccard similarity on words
   const wordsA = new Set(al.split(/\s+/));
@@ -36,7 +51,30 @@ function similarity(a: string, b: string): number {
     if (wordsB.has(w)) intersection++;
   }
   const union = wordsA.size + wordsB.size - intersection;
-  return union === 0 ? 0 : intersection / union;
+  const jaccard = union === 0 ? 0 : intersection / union;
+
+  // Also check how many words from the shorter title appear in the longer
+  const shorter = wordsA.size <= wordsB.size ? wordsA : wordsB;
+  const longer = wordsA.size > wordsB.size ? wordsA : wordsB;
+  let covered = 0;
+  for (const w of shorter) {
+    if (longer.has(w)) covered++;
+  }
+  const coverage = shorter.size === 0 ? 0 : covered / shorter.size;
+
+  return Math.max(jaccard, coverage * 0.75);
+}
+
+/** Get the best similarity score for a result against all title variants */
+function resultScore(result: HiAnimeResult, titles: string[]): number {
+  const names = [result.name, result.jname].filter(Boolean) as string[];
+  let best = 0;
+  for (const name of names) {
+    for (const title of titles) {
+      best = Math.max(best, similarity(name, title));
+    }
+  }
+  return best;
 }
 
 function bestMatch(
@@ -51,12 +89,10 @@ function bestMatch(
   let bestScore = 0;
 
   for (const result of results) {
-    for (const title of candidates) {
-      const score = similarity(result.name, title);
-      if (score > bestScore) {
-        bestScore = score;
-        best = result;
-      }
+    const score = resultScore(result, candidates);
+    if (score > bestScore) {
+      bestScore = score;
+      best = result;
     }
   }
 
@@ -81,6 +117,7 @@ export function WatchButton({ titles }: WatchButtonProps) {
         titles.native,
       ].filter(Boolean) as string[];
 
+      const candidates = queries; // reuse for similarity checks
       let allResults: HiAnimeResult[] = [];
       let matched: HiAnimeResult | null = null;
 
@@ -97,34 +134,67 @@ export function WatchButton({ titles }: WatchButtonProps) {
 
           // Check for good match
           matched = bestMatch(animes, titles);
-          allResults = animes;
 
-          if (matched) break; // Found a good match, stop searching
+          if (matched) {
+            allResults = animes;
+            break;
+          }
 
-          // If first query got results but no match, keep them as fallback
-          if (allResults.length === 0) allResults = animes;
+          // Merge results (deduplicate by id)
+          const existingIds = new Set(allResults.map((r) => r.id));
+          for (const anime of animes) {
+            if (!existingIds.has(anime.id)) {
+              allResults.push(anime);
+            }
+          }
         } catch {
           // Try next query
         }
       }
 
+      // Also try suggestions API if no auto-match found
+      if (!matched && queries.length > 0) {
+        try {
+          const res = await fetch(
+            `/api/hianime/search?q=${encodeURIComponent(queries[0])}&type=suggestions`
+          );
+          if (res.ok) {
+            const data = await res.json();
+            const suggestions: HiAnimeResult[] = data.suggestions ?? [];
+            const existingIds = new Set(allResults.map((r) => r.id));
+            for (const s of suggestions) {
+              if (!existingIds.has(s.id)) allResults.push(s);
+            }
+            if (!matched) matched = bestMatch(allResults, titles);
+          }
+        } catch {
+          // ignore
+        }
+      }
+
       if (cancelled) return;
 
-      // Sort results by similarity to any title variant
-      const candidates = [titles.english, titles.romaji, titles.native].filter(
-        Boolean
-      ) as string[];
-      allResults.sort((a, b) => {
-        const scoreA = Math.max(...candidates.map((t) => similarity(a.name, t)));
-        const scoreB = Math.max(...candidates.map((t) => similarity(b.name, t)));
-        return scoreB - scoreA;
-      });
+      // Filter out irrelevant results — only keep those with meaningful similarity
+      const scored = allResults.map((r) => ({
+        result: r,
+        score: resultScore(r, candidates),
+      }));
 
-      setSearchResults(allResults);
+      const filtered = scored
+        .filter((s) => s.score >= MIN_SIMILARITY)
+        .sort((a, b) => b.score - a.score)
+        .map((s) => s.result);
+
+      // Make sure matched result is included even if slightly below threshold
+      if (matched && !filtered.find((r) => r.id === matched!.id)) {
+        filtered.unshift(matched);
+      }
+
+      setSearchResults(filtered);
       if (matched) {
         setHiAnimeId(matched.id);
-      } else if (allResults.length === 1) {
-        setHiAnimeId(allResults[0].id);
+      } else if (filtered.length === 1) {
+        setHiAnimeId(filtered[0].id);
       }
       setLoading(false);
     }
