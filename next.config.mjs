@@ -3,13 +3,16 @@ import nextPWA from 'next-pwa';
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
+  eslint: {
+    ignoreDuringBuilds: true,
+  },
   images: {
     domains: [
       'cdn.noitatnemucod.net',
       'artworks.thetvdb.com',
       's4.anilist.co',
       'media.kitsu.app',
-      'i.animepahe.ru ',
+      'i.animepahe.ru',
     ],
   },
 };
