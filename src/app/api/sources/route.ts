@@ -1,7 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
-import { HiAnimeEpisodeProvider } from "@/providers/hianime";
+import { HiAnimeEpisodeProvider, resetScraper } from "@/providers/hianime";
 
-const episodeProvider = new HiAnimeEpisodeProvider();
+export const dynamic = "force-dynamic";
+
+const MAX_SERVER_RETRIES = 3;
+const RETRY_DELAYS = [0, 800, 1500];
+
+async function sleep(ms: number) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
 
 export async function GET(request: NextRequest) {
   const { searchParams } = request.nextUrl;
@@ -23,18 +30,35 @@ export async function GET(request: NextRequest) {
     );
   }
 
-  const result = await episodeProvider.getEpisodeSources(
-    id,
-    server,
-    category as "sub" | "dub" | "raw"
-  );
+  let lastError = "Failed to fetch sources";
 
-  if (!result.success) {
-    return NextResponse.json(
-      { error: result.error ?? "Failed to fetch sources" },
-      { status: 500 }
+  for (let attempt = 0; attempt < MAX_SERVER_RETRIES; attempt++) {
+    if (attempt > 0) {
+      await sleep(RETRY_DELAYS[attempt] ?? 1500);
+      // Reset scraper on retry to get a fresh instance
+      resetScraper();
+    }
+
+    const provider = new HiAnimeEpisodeProvider();
+    const result = await provider.getEpisodeSources(
+      id,
+      server,
+      category as "sub" | "dub" | "raw"
     );
+
+    if (result.success && result.data) {
+      return NextResponse.json(result.data, {
+        headers: {
+          "Cache-Control": "public, s-maxage=300, stale-while-revalidate=600",
+        },
+      });
+    }
+
+    lastError = result.error ?? "Failed to fetch sources";
   }
 
-  return NextResponse.json(result.data);
+  return NextResponse.json(
+    { error: lastError },
+    { status: 502 }
+  );
 }

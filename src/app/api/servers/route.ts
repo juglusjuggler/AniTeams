@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
-import { HiAnimeEpisodeProvider } from "@/providers/hianime";
+import { HiAnimeEpisodeProvider, resetScraper } from "@/providers/hianime";
+
+export const dynamic = "force-dynamic";
 
 const episodeProvider = new HiAnimeEpisodeProvider();
 

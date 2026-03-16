@@ -67,6 +67,10 @@ function getScraper(): HiAnime.Scraper {
   return globalForScraper.hianimeScraper;
 }
 
+export function resetScraper(): void {
+  globalForScraper.hianimeScraper = undefined;
+}
+
 // ─── HiAnime Episode Provider ──────────────────────────
 
 export class HiAnimeEpisodeProvider implements EpisodeProvider {

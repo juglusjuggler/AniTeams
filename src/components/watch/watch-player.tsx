@@ -132,8 +132,7 @@ export function WatchPlayer({
     setSources(null);
     setError(null);
 
-    const MAX_RETRIES = 3;
-    const RETRY_DELAY = 1500;
+    const MAX_RETRIES = 5;
 
     async function fetchSources(attempt: number) {
       if (abort.signal.aborted) return;
@@ -149,7 +148,8 @@ export function WatchPlayer({
         });
 
         if (!r.ok) {
-          throw new Error("Failed to load video source");
+          const errData = await r.json().catch(() => ({}));
+          throw new Error(errData.error || `Server error (${r.status})`);
         }
 
         const data: SourcesData = await r.json();
@@ -167,8 +167,9 @@ export function WatchPlayer({
         if (err instanceof Error && err.name === "AbortError") return;
 
         if (attempt < MAX_RETRIES) {
-          // Wait then retry
-          await new Promise((resolve) => setTimeout(resolve, RETRY_DELAY));
+          // Exponential backoff: 1s, 2s, 4s, 6s
+          const delay = Math.min(1000 * Math.pow(1.5, attempt - 1), 6000);
+          await new Promise((resolve) => setTimeout(resolve, delay));
           if (!abort.signal.aborted) {
             return fetchSources(attempt + 1);
           }

@@ -42,9 +42,14 @@ export async function POST(req: Request) {
     });
 
     return NextResponse.json({ success: true }, { status: 201 });
-  } catch {
+  } catch (err) {
+    console.error("[REGISTER_ERROR]", err);
+    const message =
+      err instanceof Error && err.message.includes("connect")
+        ? "Database connection error. Please try again later."
+        : "Something went wrong. Please try again.";
     return NextResponse.json(
-      { error: "Something went wrong. Please try again." },
+      { error: message },
       { status: 500 }
     );
   }
