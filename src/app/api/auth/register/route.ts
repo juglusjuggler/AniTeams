@@ -44,10 +44,22 @@ export async function POST(req: Request) {
     return NextResponse.json({ success: true }, { status: 201 });
   } catch (err) {
     console.error("[REGISTER_ERROR]", err);
-    const message =
-      err instanceof Error && err.message.includes("connect")
-        ? "Database connection error. Please try again later."
-        : "Something went wrong. Please try again.";
+
+    let message = "Something went wrong. Please try again.";
+    if (err instanceof Error) {
+      if (err.message.includes("connect") || err.message.includes("ECONNREFUSED")) {
+        message = "Database connection error. Please try again later.";
+      } else if (err.message.includes("Can't reach database") || err.message.includes("P1001")) {
+        message = "Database is unreachable. Please try again later.";
+      } else if (err.message.includes("table") || err.message.includes("relation") || err.message.includes("P2021")) {
+        message = "Database tables not set up. Please contact admin.";
+      } else if (err.message.includes("Unique constraint")) {
+        message = "An account with this email already exists.";
+      } else {
+        message = `Server error: ${err.message.slice(0, 150)}`;
+      }
+    }
+
     return NextResponse.json(
       { error: message },
       { status: 500 }
