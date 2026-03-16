@@ -7,7 +7,7 @@ WORKDIR /app
 COPY package.json package-lock.json* ./
 COPY prisma ./prisma/
 
-# Install deps and generate Prisma client (using the installed binary directly)
+# Install deps and generate Prisma client
 RUN npm ci && node node_modules/prisma/build/index.js generate
 
 # ─── Build ───────────────────────────────────────────────
@@ -38,13 +38,16 @@ COPY --from=builder /app/public ./public
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 
-# Copy Prisma CLI, client, and schema for runtime db push
-COPY --from=builder /app/node_modules/prisma ./node_modules/prisma
-COPY --from=builder /app/node_modules/@prisma ./node_modules/@prisma
+# Overwrite the standalone prisma client with the full generated one
+# This ensures query engines and DMMF are present
 COPY --from=builder /app/node_modules/.prisma ./node_modules/.prisma
+COPY --from=builder /app/node_modules/@prisma/client ./node_modules/@prisma/client
+
+# Copy Prisma CLI and schema for runtime db push
+COPY --from=builder /app/node_modules/prisma ./node_modules/prisma
 COPY --from=builder /app/prisma ./prisma
 
-# Create startup script (runs db push as root before dropping to nextjs)
+# Startup script: sync DB schema then start server
 RUN printf '#!/bin/sh\nset -e\necho "Syncing database schema..."\nnode node_modules/prisma/build/index.js db push --accept-data-loss || echo "WARNING: prisma db push failed, continuing anyway"\necho "Starting server..."\nexec node server.js\n' > /app/start.sh && chmod +x /app/start.sh
 
 USER nextjs

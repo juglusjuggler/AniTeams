@@ -2,7 +2,7 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   output: "standalone",
-  serverExternalPackages: ["aniwatch", "pino", "pino-pretty", "thread-stream"],
+  serverExternalPackages: ["aniwatch", "@prisma/client", "pino", "pino-pretty", "thread-stream"],
   allowedDevOrigins: ["*.app.github.dev", "*.github.dev"],
   images: {
     remotePatterns: [
